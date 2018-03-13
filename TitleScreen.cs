@@ -7,7 +7,7 @@ public class TitleScreen : Savepoint
 
 	private void StartState()
 	{
-		if (this.started)
+		if (this.started) // Modified line - starts the game on the first possible frame (as if by holding space)
 		{
 			this.startPressed = true;
 			this.colorChangesTerminated = true;

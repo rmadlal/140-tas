@@ -17,8 +17,8 @@ public class MyCharacterController : GroundbasedController
 		{
 			this.facingGfxDist = Mathf.Abs(this.facingGfx.transform.localPosition.x);
 		}
-		this.tas = base.gameObject.AddComponent<Tas>(); //Added line
-		this.tas.enabled = true; //Added line
+		this.tas = base.gameObject.AddComponent<Tas>(); // Added line
+		this.tas.enabled = true; // Added line
 		this.UpdateFacing();
 	}
 
@@ -72,7 +72,7 @@ public class MyCharacterController : GroundbasedController
 		}
 		if (!this.logicPaused)
 		{
-			this.tas.UpdateTas(); //Added line
+			this.tas.UpdateTas(); // Added line
 			this.UpdateHorizontalStick();
 			this.UpdateJump();
 			this.UpdateMove();
@@ -134,5 +134,5 @@ public class MyCharacterController : GroundbasedController
 		this.pub_GroundVel = Vector3.zero;
 	}
 
-    private Tas tas; //Added line
+    private Tas tas; // Added line
 }

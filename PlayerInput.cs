@@ -7,7 +7,7 @@ public class PlayerInput : MonoBehaviour
 
 	public static bool GetKeyJumpDown()
 	{
-		return PlayerInput.lockedJump || Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Tas.jump || (InputManager.ActiveDevice != null && InputManager.ActiveDevice.Action1.WasPressed);
+		return PlayerInput.lockedJump || Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Tas.jump || (InputManager.ActiveDevice != null && InputManager.ActiveDevice.Action1.WasPressed); // Modified line (Tas.jump)
 	}
 
 	public static float GetHorizontalStick()
@@ -48,7 +48,7 @@ public class PlayerInput : MonoBehaviour
 		{
 			num = 0f;
 		}
-		if ((Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) || Tas.left) && (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) || Tas.right))
+		if ((Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) || Tas.left) && (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) || Tas.right)) // Modified line (Tas.left, Tas.right)
 		{
 			if (PlayerInput.leftTimeStamp < PlayerInput.rightTimeStamp)
 			{
@@ -59,12 +59,12 @@ public class PlayerInput : MonoBehaviour
 				num = 1f;
 			}
 		}
-		else if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) || Tas.left)
+		else if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) || Tas.left) // Modified line (Tas.left)
 		{
 			num = -1f;
 			PlayerInput.leftTimeStamp = Time.time;
 		}
-		else if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) || Tas.right)
+		else if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) || Tas.right) // Modified line (Tas.right)
 		{
 			num = 1f;
 			PlayerInput.rightTimeStamp = Time.time;

@@ -4,6 +4,10 @@ using UnityEngine;
 
 public class Tas : MonoBehaviour
 {
+    private void Awake()
+    {
+        this.player = base.gameObject.GetComponent<MyCharacterController>();
+    }
 
 	private void Start()
 	{
@@ -29,20 +33,21 @@ public class Tas : MonoBehaviour
 	private void StartTas()
 	{
 		string inputFilename;
-        switch (Application.loadedLevelName) {
-            case "Level_Menu"":
+        switch (Application.loadedLevelName)
+        {
+            case "Level_Menu":
                 inputFilename = "tas_script_0.txt";
                 break;
-            case "Level1_BeatsAndJumps"":
+            case "Level1_BeatsAndJumps":
                 inputFilename = "tas_script_1.txt";
                 break;
-            case "Level2_SnakesAndLasers"":
+            case "Level2_SnakesAndLasers":
                 inputFilename = "tas_script_2.txt";
                 break;
-            case "Level3_Scales"":
+            case "Level3_Scales":
                 inputFilename = "tas_script_3.txt";
                 break;
-            case "Level4_Test"":
+            case "Level4_Test":
                 inputFilename = "tas_script_4.txt";
                 break;
             default:
@@ -50,16 +55,21 @@ public class Tas : MonoBehaviour
         }
 		this.inputLines = File.ReadAllLines(inputFilename);
 		Debug.Log(string.Format("Tas input file {0} loaded", inputFilename));
-		this.ResetState();
+		this.ResetState(true);
 		this.isRunning = true;
 	}
 
 	private void StopTas()
 	{
-		this.ResetState();
+		this.ResetState(true);
 		this.isRunning = false;
 	}
 
+    /*
+        Set frame count and movement flags according to the next input line.
+        Empty lines or line comments are skipped until a valid line is reached.
+        Tas execution stops if end of file is reached.
+    */
 	private void ProcessNextLine()
 	{
 		string text = this.inputLines[this.currentLineIdx].Trim();
@@ -73,14 +83,12 @@ public class Tas : MonoBehaviour
 			}
 			text = this.inputLines[this.currentLineIdx].Trim();
 		}
-		string[] array = text.Split(new char[]
-		{
-			','
-		});
-		this.currentFrameCount = int.Parse(array[0]);
+		string[] array = text.Split(',');
+		this.currentTotalFrames = int.Parse(array[0]);
 		for (int i = 1; i < array.Length; i++)
 		{
-            switch (array[i].ToLower()) {
+			switch (array[i].ToLower())
+            {
                 case "left":
                     Tas.left = true;
                     break;
@@ -90,22 +98,25 @@ public class Tas : MonoBehaviour
                 case "jump":
                     Tas.jump = true;
                     break;
+                default:
+                    return;
             }
 		}
 	}
 
 	public void UpdateTas()
 	{
-		if (!this.isRunning)
+		if (!this.isRunning || this.player == null || this.player.IsControlPaused() || this.player.visualPlayer.StateIsLocked())
 		{
 			return;
 		}
-		MyCharacterController component = Globals.player.GetComponent<MyCharacterController>();
-		if (component == null || component.IsControlPaused() || component.IsLogicPause() || component.visualPlayer.StateIsLocked())
+        // Gate activated - resume from next line
+		if (this.player.IsForceMoveActive())
 		{
+			this.ResetState(false);
 			return;
 		}
-		if (this.currentFrameCount == 0)
+		if (this.currentFrameCount == this.currentTotalFrames)
 		{
 			this.currentLineIdx++;
 			if (this.currentLineIdx == this.inputLines.Length)
@@ -116,8 +127,7 @@ public class Tas : MonoBehaviour
 			this.ResetInputs();
 			this.ProcessNextLine();
 		}
-		this.currentFrameCount--;
-		this.totalFrameCount++;
+		this.currentFrameCount++;
 	}
 
 	private void ResetInputs()
@@ -125,6 +135,8 @@ public class Tas : MonoBehaviour
 		Tas.left = false;
 		Tas.right = false;
 		Tas.jump = false;
+		this.currentTotalFrames = 0;
+		this.currentFrameCount = 0;
 	}
 
 	private void OnGUI()
@@ -133,8 +145,10 @@ public class Tas : MonoBehaviour
 		{
 			return;
 		}
-		GUI.Label(new Rect(50f, (float)(Screen.height - 60), 200f, 200f), this.totalFrameCount.ToString());
-		GUI.Label(new Rect(50f, (float)(Screen.height - 40), 200f, 200f), string.Format("{0} {1} {2}", Tas.left ? "Left " : "", Tas.right ? "Right " : "", Tas.jump ? "Jump " : ""));
+		GUI.Label(new Rect(50f, (float)(Screen.height - 70), 200f, 200f), this.currentTotalFrames.ToString());
+		GUI.Label(new Rect(100f, (float)(Screen.height - 70), 200f, 200f), this.currentFrameCount.ToString());
+		GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f), string.Format("{0} {1} {2}", Tas.left ? "Left " : "", Tas.right ? "Right " : "", Tas.jump ? "Jump " : ""));
+		GUI.Label(new Rect(50f, (float)(Screen.height - 30), 200f, 200f), string.Format("{0:0.00} {1:0.00}", base.transform.position.x.ToString(), base.transform.position.y.ToString()));
 	}
 
 	private void Destroy()
@@ -142,15 +156,16 @@ public class Tas : MonoBehaviour
 		this.ResetInputs();
 	}
 
-	private void ResetState()
+	public void ResetState(bool restartScript)
 	{
-		this.currentLineIdx = -1;
-		this.currentFrameCount = 0;
-		this.totalFrameCount = 0;
+		if (restartScript)
+		{
+			this.currentLineIdx = -1;
+		}
 		this.ResetInputs();
 	}
 
-	public bool isRunning;
+	private bool isRunning;
 
 	private string[] inputLines;
 
@@ -162,9 +177,11 @@ public class Tas : MonoBehaviour
 
 	public static bool jump;
 
-	public int currentFrameCount;
-
-	private int totalFrameCount;
+	private int currentFrameCount;
 
 	private static bool showGUI;
+
+	private int currentTotalFrames;
+
+    private MyCharacterController player;
 }
