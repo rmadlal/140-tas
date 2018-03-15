@@ -6,7 +6,8 @@ Each line can be one of:
 * Inputs for some number of frames. Structure: `<# of frames>[,<input>[,<input>[...]]]` where `<input>` is `Left`, `Right` or `Jump`.  
 * Some position to which the player will move towards until it is reached. Structure: `Pos,<X position>`. The player's X position can be viewed when `Shift` + `F7` is toggled.  
 * A comment. If a line starts with `#` it'll be ignored.  
-* An empty line.  
+* An empty line.
+
 Examples:  
 `Pos,-503.4`  
 `5,Jump,Right`  
