@@ -1,0 +1,43 @@
+##### OBSOLETE. DOESN'T WORK!!! #####
+
+### 2-1 ###
+
+85,Right
+3
+5,Jump,Left
+3,Left
+9
+38,Right
+2,Jump,Right
+2,Left,Jump
+12
+43,Right
+5,Right,Jump
+102,Right
+5,Left
+5,Left,Jump
+24,Left
+26
+3,Right
+5,Right,Jump
+40,Right
+5,Right,Jump
+115,Right
+5,Right,Jump
+60,Right
+5,Left
+5,Left,Jump
+29,Left
+218
+5,Jump,Right
+40,Right
+5,Jump,Right
+360,Right
+
+### 2-2 ###
+
+250,Right
+5,Right,Jump
+59,Right
+5,Right,Jump
+200,Right
