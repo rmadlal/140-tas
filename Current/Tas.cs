@@ -1,9 +1,19 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 public class Tas : MonoBehaviour
 {
+    private void Awake()
+    {
+        this.player = base.gameObject.GetComponent<MyCharacterController>();
+        this.guiStyle = new GUIStyle();
+        this.guiStyle.fontStyle = FontStyle.Bold;
+        this.guiStyle.fontSize = 16;
+        this.guiStyle.normal.textColor = Color.white;
+    }
+
     private void Start()
     {
         this.StartTas();
@@ -15,10 +25,12 @@ public class Tas : MonoBehaviour
         {
             this.StartTas();
         }
+
         if (Event.current.shift && Input.GetKeyDown(KeyCode.F6))
         {
             this.StopTas();
         }
+
         if (Event.current.shift && Input.GetKeyDown(KeyCode.F7))
         {
             Tas.showGUI = !Tas.showGUI;
@@ -27,93 +39,74 @@ public class Tas : MonoBehaviour
 
     private void StartTas()
     {
-        string inputFilename;
-        switch (Application.loadedLevelName)
-        {
-            case "Level_Menu":
-                inputFilename = "tas_script_0.txt";
-                break;
-            case "Level1_BeatsAndJumps":
-                inputFilename = "tas_script_1.txt";
-                break;
-            case "Level2_SnakesAndLasers":
-                inputFilename = "tas_script_2.txt";
-                break;
-            case "Level3_Scales":
-                inputFilename = "tas_script_3.txt";
-                break;
-            case "Level4_Test":
-                inputFilename = "tas_script_4.txt";
-                break;
-            default:
-                return;
-        }
-        this.inputLines = File.ReadAllLines(inputFilename);
-        Debug.Log(string.Format("Tas input file {0} loaded", inputFilename));
-        this.ResetState(true);
+        this.ResetState();
+        this.InitActionQueue();
         this.isRunning = true;
     }
 
     private void StopTas()
     {
-        this.ResetState(true);
+        this.ResetState();
         this.isRunning = false;
     }
 
-    /*
-        Set frame count and movement flags or position destination according to the next input line.
-        Empty lines or line comments are skipped until a valid line is reached.
-        Tas execution stops if end of file is reached.
-    */
-    private void ProcessNextLine()
+    private void InitActionQueue()
     {
-        string text = this.inputLines[this.currentLineIdx].Trim();
-        while (string.IsNullOrEmpty(text) || text.StartsWith("#"))
+        this.ActionQueue = new Queue<TasAction>();
+
+        string inputFilename = Application.loadedLevelName + ".txt";
+        string[] inputLines = File.ReadAllLines(inputFilename);
+        Debug.Log(string.Format("Tas input file {0} loaded", inputFilename));
+
+        foreach (string line in inputLines)
         {
-            this.currentLineIdx++;
-            if (this.currentLineIdx == this.inputLines.Length)
+            TasAction action = ParseActionLine(line);
+            if (action != null)
             {
-                this.StopTas();
-                return;
+                ActionQueue.Enqueue(action);
             }
-            text = this.inputLines[this.currentLineIdx].Trim();
         }
-        string[] array = text.Split(',');
-        // Frame movement or pos?
-        if (int.TryParse(array[0], out this.currentTotalFrames))
+
+        Debug.Log("Finished parsing tas script");
+    }
+
+    private TasAction ParseActionLine(string line)
+    {
+        string command = line.Trim().ToLowerInvariant();
+        while (string.IsNullOrEmpty(command) || command.StartsWith("#"))
         {
-            this.isPos = false;
-            for (int i = 1; i < array.Length; i++)
+            return null;
+        }
+
+        string[] parts = command.Split(',');
+
+        TasAction action = new TasAction();
+        if (int.TryParse(parts[0], out action.RemainingFrames))
+        {
+            action.IsPosition = false;
+            foreach (string part in parts)
             {
-                switch (array[i].ToLower())
+                switch (part)
                 {
                     case "left":
-                        Tas.left = true;
+                        action.Left = true;
                         break;
                     case "right":
-                        Tas.right = true;
+                        action.Right = true;
                         break;
                     case "jump":
-                        Tas.jump = true;
+                        action.Jump = true;
                         break;
-                    default:
-                        return;
                 }
             }
         }
-        else if (array[0].ToLower() == "pos" && array.Length >= 2)
+        else if (parts[0] == "pos" && parts.Length >= 2)
         {
-            this.isPos = true;
-            this.toX = float.Parse(array[1]);
-            if (this.toX > base.transform.position.x)
-            {
-                Tas.right = true;
-            }
-            else if (this.toX < base.transform.position.x)
-            {
-                Tas.left = true;
-            }
+            action.IsPosition = true;
+            action.TargetX = float.Parse(parts[1]);
         }
+
+        return action;
     }
 
     public void UpdateTas()
@@ -122,33 +115,62 @@ public class Tas : MonoBehaviour
         {
             return;
         }
+
         // Gate activated - resume from next line
         if (this.player.IsForceMoveActive())
         {
-            this.ResetState(false);
+            this.ResetInputs();
             return;
         }
-        if (this.IsCurrentLineDone())
+
+        if (this.IsCurrentActionFinished())
         {
-            this.currentLineIdx++;
-            if (this.currentLineIdx == this.inputLines.Length)
+            if (this.ActionQueue.Count == 0)
             {
                 this.StopTas();
                 return;
             }
+
             this.ResetInputs();
-            this.ProcessNextLine();
+            Tas.Action = ActionQueue.Dequeue();
+
+            if (Tas.Action.IsPosition)
+            {
+                if (Tas.Action.TargetX > base.transform.position.x)
+                {
+                    Tas.Action.Right = true;
+                }
+                else if (Tas.Action.TargetX < base.transform.position.x)
+                {
+                    Tas.Action.Left = true;
+                }
+            }
         }
-        this.currentFrameCount++;
+
+        // TODO If there is an off-by-one error, try moving this to the top
+        Tas.Action.RemainingFrames--;
+    }
+
+    public void ResetState()
+    {
+        this.ActionQueue.Clear();
+        this.ResetInputs();
     }
 
     private void ResetInputs()
     {
-        Tas.left = false;
-        Tas.right = false;
-        Tas.jump = false;
-        this.currentTotalFrames = 0;
-        this.currentFrameCount = 0;
+        Tas.Action = new TasAction();
+    }
+
+    private bool IsCurrentActionFinished()
+    {
+        if (Tas.Action.IsPosition)
+        {
+            return (Tas.Action.Right && base.transform.position.x >= Tas.Action.TargetX)
+                || (Tas.Action.Left && base.transform.position.x <= Tas.Action.TargetX);
+        }
+
+        return Tas.Action.RemainingFrames <= 0;
     }
 
     private void OnGUI()
@@ -157,72 +179,31 @@ public class Tas : MonoBehaviour
         {
             return;
         }
-        GUI.Label(new Rect(50f, (float)(Screen.height - 70), 200f, 200f), this.currentFrameCount.ToString(), this.guiStyle);
-        GUI.Label(new Rect(100f, (float)(Screen.height - 70), 200f, 200f), this.currentTotalFrames.ToString(), this.guiStyle);
-        if (this.isPos)
-        {
-            GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f), string.Format("To {0}", this.toX), this.guiStyle);
-        }
-        else
-        {
-            GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f), string.Format("{0} {1} {2}", Tas.left ? "Left " : "", Tas.right ? "Right " : "", Tas.jump ? "Jump " : ""), this.guiStyle);
-        }
-        GUI.Label(new Rect(50f, (float)(Screen.height - 30), 200f, 200f), string.Format("{0} {1}",
-            base.transform.position.x.ToString("0.00"), base.transform.position.y.ToString("0.00")), this.guiStyle);
+
+        GUI.Label(new Rect(50f, (float)(Screen.height - 70), 200f, 200f), Tas.Action.RemainingFrames.ToString(), this.guiStyle);
+
+        string currentAction = Tas.Action.ToString();
+        GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f), currentAction, this.guiStyle);
+
+        string position = string.Format("{0} {1}", base.transform.position.x.ToString("0.00"), base.transform.position.y.ToString("0.00"));
+        GUI.Label(new Rect(50f, (float)(Screen.height - 30), 200f, 200f), position, this.guiStyle);
     }
 
     private void Destroy()
     {
-        this.ResetInputs();
+        ActionQueue = null;
+        Tas.Action = null;
     }
 
-    public void ResetState(bool restartScript)
-    {
-        if (restartScript)
-        {
-            this.currentLineIdx = -1;
-        }
-        this.ResetInputs();
-    }
-
-    private void Awake()
-    {
-        this.player = base.gameObject.GetComponent<MyCharacterController>();
-        this.guiStyle = new GUIStyle();
-		this.guiStyle.fontStyle = FontStyle.Bold;
-		this.guiStyle.fontSize = 16;
-		this.guiStyle.normal.textColor = Color.white;
-    }
-
-    private bool IsCurrentLineDone()
-    {
-        return (this.isPos && ((Tas.right && base.transform.position.x >= this.toX) || (Tas.left && base.transform.position.x <= this.toX)))
-            || this.currentFrameCount == this.currentTotalFrames;
-    }
-
-    private bool isRunning;
-
-    private string[] inputLines;
-
-    private int currentLineIdx;
-
-    public static bool left;
-
-    public static bool right;
-
-    public static bool jump;
-
-    private int currentFrameCount;
+    public static TasAction Action;
 
     private static bool showGUI;
 
-    private int currentTotalFrames;
+    private Queue<TasAction> ActionQueue;
+
+    private bool isRunning;
 
     private MyCharacterController player;
-
-    private float toX;
-
-    private bool isPos;
 
     private GUIStyle guiStyle;
 }

@@ -135,10 +135,10 @@ public class MyCharacterController : GroundbasedController
     }
 
     // New method
-	public bool IsControlPaused()
-	{
-		return this.controlPaused;
-	}
+    public bool IsControlPaused()
+    {
+        return this.controlPaused;
+    }
 
     private Tas tas; // Added line
 }
