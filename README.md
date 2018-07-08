@@ -5,15 +5,17 @@ There needs to be an input file for each level: `tas_script_0.txt` (main hub) th
 Each line can be one of:  
 * Inputs for some number of frames. Structure: `<# of frames>[,<input>[,<input>[...]]]` where `<input>` is `Left`, `Right` or `Jump`.  
 * Some position to which the player will move towards until it is reached. Structure: `Pos,<X position>`. The player's X position can be viewed when `Shift` + `F7` is toggled.  
+* Some position to which the player will instantly be set. Note: it is recommended to add movement inputs for smooth movement. Structure: `SetPos,<X position>,<Y position>[,<input>[,<input>[...]]]`.  
 * A comment. If a line starts with `#` it'll be ignored.  
 * An empty line.
 
 Examples:  
-`Pos,-503.4`  
+`40,Left`  
 `5,Jump,Right`  
-`Pos,-497.7`  
 `35` (here the player will wait for 35 frames.)  
-`40,Left`
+`Pos,-503.4` (here the player will move either left or right until it reaches X position -503.4.)  
+`SetPos,100,200.25,Right` (here the player will snap to position x = 100, y = 200.25 while moving right.)  
+`# Hello` (this will be ignored.)
 
 ### Behavior ###  
 The game automatically starts on the first possible frame, as if by holding jump or enter.  

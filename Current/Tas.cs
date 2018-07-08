@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Tas : MonoBehaviour
 {
@@ -27,29 +29,9 @@ public class Tas : MonoBehaviour
 
     private void StartTas()
     {
-        string inputFilename;
-        switch (Application.loadedLevelName)
-        {
-            case "Level_Menu":
-                inputFilename = "tas_script_0.txt";
-                break;
-            case "Level1_BeatsAndJumps":
-                inputFilename = "tas_script_1.txt";
-                break;
-            case "Level2_SnakesAndLasers":
-                inputFilename = "tas_script_2.txt";
-                break;
-            case "Level3_Scales":
-                inputFilename = "tas_script_3.txt";
-                break;
-            case "Level4_Test":
-                inputFilename = "tas_script_4.txt";
-                break;
-            default:
-                return;
-        }
-        this.inputLines = File.ReadAllLines(inputFilename);
-        Debug.Log(string.Format("Tas input file {0} loaded", inputFilename));
+        string script = Tas.scripts[SceneManager.GetActiveScene().name];
+        this.inputLines = File.ReadAllLines(script);
+        Debug.Log(string.Format("Tas input file {0} loaded", script));
         this.ResetState(true);
         this.isRunning = true;
     }
@@ -61,9 +43,9 @@ public class Tas : MonoBehaviour
     }
 
     /*
-        Set frame count and movement flags or position destination according to the next input line.
-        Empty lines or line comments are skipped until a valid line is reached.
-        Tas execution stops if end of file is reached.
+    Set frame count and movement flags or position destination according to the next input line.
+    Empty lines or line comments are skipped until a valid line is reached.
+    Tas execution stops if end of file is reached.
     */
     private void ProcessNextLine()
     {
@@ -79,40 +61,50 @@ public class Tas : MonoBehaviour
             text = this.inputLines[this.currentLineIdx].Trim();
         }
         string[] array = text.Split(',');
-        // Frame movement or pos?
+
+        // Command type?
         if (int.TryParse(array[0], out this.currentTotalFrames))
         {
-            this.isPos = false;
-            for (int i = 1; i < array.Length; i++)
-            {
-                switch (array[i].ToLower())
-                {
-                    case "left":
-                        Tas.left = true;
-                        break;
-                    case "right":
-                        Tas.right = true;
-                        break;
-                    case "jump":
-                        Tas.jump = true;
-                        break;
-                    default:
-                        return;
-                }
-            }
+            this.cmdType = Tas.CmdType.RegularInput;
         }
         else if (array[0].ToLower() == "pos" && array.Length >= 2)
         {
-            this.isPos = true;
+            this.cmdType = Tas.CmdType.MoveTo;
+        }
+        else if (array[0].ToLower() == "setpos" && array.Length >= 3)
+        {
+            this.cmdType = Tas.CmdType.SetPos;
+        }
+        else
+            return;
+
+        // Execute command
+        switch (this.cmdType)
+        {
+        case Tas.CmdType.RegularInput:
+            this.RegisterInputs(array, 1);
+            return;
+        case Tas.CmdType.MoveTo:
             this.toX = float.Parse(array[1]);
             if (this.toX > base.transform.position.x)
             {
                 Tas.right = true;
+                return;
             }
-            else if (this.toX < base.transform.position.x)
+            if (this.toX < base.transform.position.x)
             {
                 Tas.left = true;
+                return;
             }
+            return;
+        case Tas.CmdType.SetPos:
+            float x = float.Parse(array[1]);
+            float y = float.Parse(array[2]);
+            base.transform.position = new Vector3(x, y, base.transform.position.z);
+            this.RegisterInputs(array, 3);
+            return;
+        default:
+            return;
         }
     }
 
@@ -157,18 +149,20 @@ public class Tas : MonoBehaviour
         {
             return;
         }
-        GUI.Label(new Rect(50f, (float)(Screen.height - 70), 200f, 200f), this.currentFrameCount.ToString(), this.guiStyle);
-        GUI.Label(new Rect(100f, (float)(Screen.height - 70), 200f, 200f), this.currentTotalFrames.ToString(), this.guiStyle);
+        GUI.Label(new Rect(50f, (float)(Screen.height - 90), 200f, 200f), this.currentFrameCount.ToString(), this.guiStyle);
+        GUI.Label(new Rect(100f, (float)(Screen.height - 90), 200f, 200f), this.currentTotalFrames.ToString(), this.guiStyle);
         if (this.isPos)
         {
-            GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f), string.Format("To {0}", this.toX), this.guiStyle);
+            GUI.Label(new Rect(50f, (float)(Screen.height - 70), 200f, 200f), string.Format("To {0}", this.toX), this.guiStyle);
         }
         else
         {
-            GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f), string.Format("{0} {1} {2}", Tas.left ? "Left " : "", Tas.right ? "Right " : "", Tas.jump ? "Jump " : ""), this.guiStyle);
+            GUI.Label(new Rect(50f, (float)(Screen.height - 70), 200f, 200f), string.Format("{0} {1} {2}", Tas.left ? "Left " : "", Tas.right ? "Right " : "", Tas.jump ? "Jump " : ""), this.guiStyle);
         }
-        GUI.Label(new Rect(50f, (float)(Screen.height - 30), 200f, 200f), string.Format("{0} {1}",
-            base.transform.position.x.ToString("0.00"), base.transform.position.y.ToString("0.00")), this.guiStyle);
+        GUI.Label(new Rect(50f, (float)(Screen.height - 50), 200f, 200f),
+            string.Format("x: {0}", base.transform.position.x), this.guiStyle);
+        GUI.Label(new Rect(50f, (float)(Screen.height - 30), 200f, 200f),
+            string.Format("y: {0}", base.transform.position.y), this.guiStyle);
     }
 
     private void Destroy()
@@ -189,15 +183,37 @@ public class Tas : MonoBehaviour
     {
         this.player = base.gameObject.GetComponent<MyCharacterController>();
         this.guiStyle = new GUIStyle();
-		this.guiStyle.fontStyle = FontStyle.Bold;
-		this.guiStyle.fontSize = 16;
-		this.guiStyle.normal.textColor = Color.white;
+        this.guiStyle.fontStyle = FontStyle.Bold;
+        this.guiStyle.fontSize = 16;
+        this.guiStyle.normal.textColor = Color.white;
     }
 
     private bool IsCurrentLineDone()
     {
-        return (this.isPos && ((Tas.right && base.transform.position.x >= this.toX) || (Tas.left && base.transform.position.x <= this.toX)))
+        return this.cmdType == Tas.CmdType.SetPos
+            || (this.cmdType == Tas.CmdType.MoveTo && ((Tas.right && base.transform.position.x >= this.toX) || (Tas.left && base.transform.position.x <= this.toX)))
             || this.currentFrameCount == this.currentTotalFrames;
+    }
+
+    private void RegisterInputs(string[] line, int from)
+    {
+        for (int i = from; i < line.Length; i++)
+        {
+            switch (line[i].ToLower())
+            {
+            case "left":
+                Tas.left = true;
+                break;
+            case "right":
+                Tas.right = true;
+                break;
+            case "jump":
+                Tas.jump = true;
+                break;
+            default:
+                return;
+            }
+        }
     }
 
     private bool isRunning;
@@ -222,7 +238,38 @@ public class Tas : MonoBehaviour
 
     private float toX;
 
-    private bool isPos;
-
     private GUIStyle guiStyle;
+
+    private static Dictionary<string, string> scripts = new Dictionary<string, string>
+    {
+        {
+            "Level_Menu",
+            "tas_script_0.txt"
+        },
+        {
+            "Level1_BeatsAndJumps",
+            "tas_script_1.txt"
+        },
+        {
+            "Level2_SnakesAndLasers",
+            "tas_script_2.txt"
+        },
+        {
+            "Level3_Scales",
+            "tas_script_3.txt"
+        },
+        {
+            "Level4_Test",
+            "tas_script_4.txt"
+        }
+    };
+
+    private Tas.CmdType cmdType;
+
+    private enum CmdType
+    {
+        RegularInput,
+        MoveTo,
+        SetPos
+    }
 }
